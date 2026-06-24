@@ -1,8 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
@@ -11,6 +10,9 @@ export async function POST(req: Request) {
     if (!file) return Response.json({ error: 'No file provided' }, { status: 400 })
 
     const buffer = Buffer.from(await file.arrayBuffer())
+    // Dynamic import to avoid pdf-parse canvas polyfill issues at build time
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
     const { text } = await pdfParse(buffer)
 
     const client = new Anthropic()
