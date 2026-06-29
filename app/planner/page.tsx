@@ -1,7 +1,10 @@
 'use client'
+import Link from 'next/link'
+import { GitCompare } from 'lucide-react'
 import CompensationCard from '@/components/CompensationCard'
 import BudgetPlanner from '@/components/BudgetPlanner'
 import WealthProjection from '@/components/WealthProjection'
+import BenefitsCalculator from '@/components/BenefitsCalculator'
 import ChatBot from '@/components/ChatBot'
 import OfferUpload from '@/components/OfferUpload'
 
@@ -11,7 +14,15 @@ export default function PlannerPage() {
       {/* Header */}
       <header className="border-b border-border px-4 py-3 flex items-center justify-between">
         <a href="/" className="font-bold text-lg tracking-tight">SalaryOS</a>
-        <span className="text-xs text-muted-foreground hidden sm:block">Data stays in your browser</span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/compare"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <GitCompare size={14} /> Compare offers
+          </Link>
+          <span className="text-xs text-muted-foreground hidden sm:block">· Data stays in your browser</span>
+        </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6 lg:flex lg:gap-6 lg:h-[calc(100vh-57px)]">
@@ -20,6 +31,7 @@ export default function PlannerPage() {
           <OfferUpload />
           <CompensationCard />
           <BudgetPlanner />
+          <BenefitsCalculator />
           <WealthProjection />
         </div>
 

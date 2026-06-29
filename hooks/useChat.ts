@@ -1,16 +1,43 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { Message } from '@/types/salary'
 import { useSalaryStore } from './useSalaryStore'
+
+const STORAGE_KEY = 'salaryos-chat'
+
+function loadMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as Message[]) : []
+  } catch {
+    return []
+  }
+}
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+  const [lastError, setLastError] = useState<string | null>(null)
   const { salaryData, budgetItems } = useSalaryStore()
+
+  // Hydrate from localStorage after mount
+  useEffect(() => {
+    setMessages(loadMessages())
+  }, [])
+
+  // Persist whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+      } catch {}
+    }
+  }, [messages])
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (isStreaming) return
+      setLastError(null)
 
       const userMsg: Message = { role: 'user', content: text, timestamp: Date.now() }
       const updatedMessages = [...messages, userMsg]
@@ -31,7 +58,9 @@ export function useChat() {
           }),
         })
 
+        if (!res.ok) throw new Error(`Server error ${res.status}`)
         if (!res.body) throw new Error('No response body')
+
         const reader = res.body.getReader()
         const decoder = new TextDecoder()
         let accumulated = ''
@@ -40,8 +69,7 @@ export function useChat() {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n')
-          for (const line of lines) {
+          for (const line of chunk.split('\n')) {
             if (!line.startsWith('data: ')) continue
             const data = line.slice(6)
             if (data === '[DONE]') break
@@ -57,12 +85,15 @@ export function useChat() {
           }
         }
       } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        setLastError(msg)
         setMessages((prev) => {
           const next = [...prev]
           next[next.length - 1] = {
             ...next[next.length - 1],
-            content: 'Sorry, something went wrong. Please try again.',
-          }
+            content: '',
+            error: true,
+          } as Message & { error: boolean }
           return next
         })
       } finally {
@@ -72,7 +103,22 @@ export function useChat() {
     [messages, isStreaming, salaryData, budgetItems]
   )
 
-  const clearMessages = useCallback(() => setMessages([]), [])
+  const retryLast = useCallback(() => {
+    // Find last user message and replay
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+    if (!lastUser || isStreaming) return
+    // Remove the failed assistant message
+    const trimmed = messages.slice(0, messages.lastIndexOf(lastUser) + 1)
+    setMessages(trimmed)
+    setLastError(null)
+    sendMessage(lastUser.content)
+  }, [messages, isStreaming, sendMessage])
 
-  return { messages, isStreaming, sendMessage, clearMessages }
+  const clearMessages = useCallback(() => {
+    setMessages([])
+    setLastError(null)
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+  }, [])
+
+  return { messages, isStreaming, lastError, sendMessage, retryLast, clearMessages }
 }

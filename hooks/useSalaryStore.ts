@@ -3,9 +3,11 @@ import type { SalaryData, BudgetItem } from '@/types/salary'
 
 interface SalaryStore {
   salaryData: SalaryData | null
+  compareData: SalaryData | null
   budgetItems: BudgetItem[]
   sessionId: string | null
   setSalary: (data: SalaryData) => void
+  setCompare: (data: SalaryData | null) => void
   updateBudgetItem: (label: string, amount: number) => void
   setBudgetItems: (items: BudgetItem[]) => void
   reset: () => void
@@ -21,9 +23,11 @@ const defaultBudget: BudgetItem[] = [
 
 export const useSalaryStore = create<SalaryStore>((set) => ({
   salaryData: null,
+  compareData: null,
   budgetItems: defaultBudget,
   sessionId: null,
   setSalary: (data) => set({ salaryData: data }),
+  setCompare: (data) => set({ compareData: data }),
   updateBudgetItem: (label, amount) =>
     set((state) => ({
       budgetItems: state.budgetItems.map((item) =>
@@ -31,5 +35,5 @@ export const useSalaryStore = create<SalaryStore>((set) => ({
       ),
     })),
   setBudgetItems: (items) => set({ budgetItems: items }),
-  reset: () => set({ salaryData: null, budgetItems: defaultBudget, sessionId: null }),
+  reset: () => set({ salaryData: null, compareData: null, budgetItems: defaultBudget, sessionId: null }),
 }))
